@@ -1214,6 +1214,15 @@ def bot_run_timed_out():
 @memoize.wrap(memoize.Memcache(MEMCACHE_TTL_IN_SECONDS))
 def get_component_name(job_type):
   """Gets component name for a job type."""
+  if environment.is_uworker():
+    # On uworkers, read from environment instead of Datastore.
+    for key, value in os.environ.items():
+      if 'BUCKET_PATH' in key:
+        match = re.match(r'.*-([a-zA-Z0-9]+)-component', value)
+        if match:
+          return match.group(1)
+    return ''
+
   job = data_types.Job.query(data_types.Job.name == job_type).get()
   if not job:
     return ''
@@ -1230,6 +1239,9 @@ def get_component_name(job_type):
 @memoize.wrap(memoize.Memcache(MEMCACHE_TTL_IN_SECONDS))
 def get_repository_for_component(component):
   """Get the repository based on component."""
+  if environment.is_uworker():
+    return ''
+
   default_repository = ''
   repository = ''
   repository_mappings = db_config.get_value('component_repository_mappings')
@@ -1261,6 +1273,9 @@ def get_value_from_job_definition(job_type, variable_pattern, default=None):
   """Get a specific environment variable's value from a job definition."""
   if not job_type:
     return default
+
+  if environment.is_uworker():
+    return environment.get_value(variable_pattern, default)
 
   job = data_types.Job.query(data_types.Job.name == job_type).get()
   if not job:

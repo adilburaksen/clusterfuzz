@@ -1223,3 +1223,33 @@ class GetEntitiesTest(unittest.TestCase):
         self.GetEntitiesTestModel, equality_filters={'value': 5})
     self.assertIsInstance(result, Generator)
     self.assertCountEqual(result, [])
+
+
+class UworkerDataHandlerTest(unittest.TestCase):
+  """Tests for data_handler functions under uworker status."""
+
+  def setUp(self):
+    helpers.patch_environ(self)
+    helpers.patch(self, [
+        'clusterfuzz._internal.system.environment.is_uworker',
+    ])
+
+  def test_get_value_from_job_definition_uworker(self):
+    """Ensure that get_value_from_job_definition reads from environment on uworker."""
+    self.mock.is_uworker.return_value = True
+    os.environ['CUSTOM_BINARY'] = 'True'
+    self.assertEqual(
+        True, data_handler.get_value_from_job_definition(
+            'job', 'CUSTOM_BINARY'))
+
+  def test_get_component_name_uworker(self):
+    """Ensure that get_component_name parses environment variable suffix on uworker."""
+    self.mock.is_uworker.return_value = True
+    os.environ['RELEASE_BUILD_BUCKET_PATH'] = (
+        'gs://chromium-browser-component/releases')
+    self.assertEqual('browser', data_handler.get_component_name('job'))
+
+  def test_get_repository_for_component_uworker(self):
+    """Ensure that get_repository_for_component returns empty string on uworker."""
+    self.mock.is_uworker.return_value = True
+    self.assertEqual('', data_handler.get_repository_for_component('component'))
